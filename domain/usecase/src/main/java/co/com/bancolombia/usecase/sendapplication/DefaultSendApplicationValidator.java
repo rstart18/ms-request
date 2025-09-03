@@ -2,7 +2,6 @@ package co.com.bancolombia.usecase.sendapplication;
 
 import co.com.bancolombia.model.application.Application;
 import co.com.bancolombia.model.common.BusinessException;
-import co.com.bancolombia.model.commons.BusinessException;
 import reactor.core.publisher.Mono;
 
 import java.util.regex.Pattern;
@@ -12,6 +11,11 @@ public class DefaultSendApplicationValidator implements SendApplicationValidator
     // Valida formato básico de email
     private static final Pattern EMAIL_RX =
         Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    private static final int MIN_AMOUNT = 1;
+    private static final int MIN_TERM   = 1;
+    private static final int MAX_TERM   = 120;
+    private static final int MIN_DOC_LEN = 5;
+    private static final int MAX_DOC_LEN = 20;
 
     @Override
     public Mono<Application> validateForCreate(Application input) {
@@ -27,40 +31,44 @@ public class DefaultSendApplicationValidator implements SendApplicationValidator
         return a.toBuilder()
             .identityDocument(onlyDigits(trim(a.getIdentityDocument())))
             .email(lower(trim(a.getEmail())))
-            // Si tienes teléfono en el modelo, podrías normalizarlo igual:
-            // .phone(onlyDigits(trim(a.getPhone())))
             .build();
     }
 
     /** Reglas locales (sin acceder a gateways). */
     private Mono<Application> validateRules(Application a) {
-        // Documento
+        // identityDocument
         if (isBlank(a.getIdentityDocument()))
             return Mono.error(BusinessException.invalidField("identityDocument", "obligatorio"));
+        if (a.getIdentityDocument().length() < MIN_DOC_LEN || a.getIdentityDocument().length() > MAX_DOC_LEN)
+            return Mono.error(BusinessException.invalidField("identityDocument",
+                "longitud inválida (" + MIN_DOC_LEN + ".." + MAX_DOC_LEN + ")"));
 
-        // Email
+        // email
         if (isBlank(a.getEmail()))
             return Mono.error(BusinessException.invalidField("email", "obligatorio"));
         if (!EMAIL_RX.matcher(a.getEmail()).matches())
             return Mono.error(BusinessException.invalidField("email", "formato inválido"));
 
-        // Monto
+        // amount
         if (a.getAmount() == null)
             return Mono.error(BusinessException.invalidField("amount", "obligatorio"));
-        if (a.getAmount() <= 0)
+        if (a.getAmount() < MIN_AMOUNT)
             return Mono.error(BusinessException.invalidField("amount", "debe ser mayor a 0"));
 
-        // Plazo
-        if (a.getApplicationDate() == null)
+        // term (plazo) -> ¡clave para no violar NOT NULL en DB!
+        if (a.getTerm() == null)
             return Mono.error(BusinessException.invalidField("term", "obligatorio"));
+        if (a.getTerm() < MIN_TERM || a.getTerm() > MAX_TERM)
+            return Mono.error(BusinessException.invalidField("term",
+                "fuera de rango [" + MIN_TERM + ".." + MAX_TERM + "]"));
 
-        // Tipo de préstamo
+        // loanTypeId
         if (a.getLoanTypeId() == null)
             return Mono.error(BusinessException.invalidField("loanTypeId", "obligatorio"));
+        if (a.getLoanTypeId() <= 0)
+            return Mono.error(BusinessException.invalidField("loanTypeId", "debe ser > 0"));
 
-        // Nota: las validaciones contra el LoanType (rangos min/max de monto, etc.)
-        // se hacen en el UseCase, consultando el gateway correspondiente.
-
+        // applicationDate: NO lo exijas; el use case lo setea a now()
         return Mono.just(a);
     }
 

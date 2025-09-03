@@ -7,7 +7,7 @@ import org.springframework.data.relational.core.mapping.Table;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @Table("tipo_prestamo")
-public class IoanTypeEntity {
+public class LoanTypeEntity {
 
     @Id
     @Column("id_tipo_prestamo")

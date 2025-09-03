@@ -1,4 +1,12 @@
 package co.com.bancolombia.api.config;
 
-public class applicationPath {
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@Getter
+@Setter
+@ConfigurationProperties(prefix = "routes.paths.application")
+public class ApplicationPath {
+    private String create;
 }
