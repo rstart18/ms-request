@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ms-request-postgres
+    environment:
+      POSTGRES_USER: ms_request
+      POSTGRES_PASSWORD: ms_request
+      POSTGRES_DB: ms_request
+    ports:
+      - 5433:5432            # cambia el de la izquierda si ya tienes otro Postgres local
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data         # persistencia
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro   # scripts .sql/.sh de init
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ms_auth -d ms_auth"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
